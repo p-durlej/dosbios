@@ -1,0 +1,11 @@
+#!/bin/sh
+
+set -e
+
+exec qemu-system-i386		\
+	-fda disk/newdos.img	\
+	-fdb disk/scratch.img	\
+	-hda disk/disk.img	\
+	-rtc base=localtime	\
+	-boot c			\
+	-curses

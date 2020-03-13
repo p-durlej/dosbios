@@ -1,0 +1,19 @@
+#!/bin/sh
+
+#NCYL=306
+NCYL=615
+
+set -e
+
+dd if=/dev/null of=disk/scratch.img bs=512 seek=2880
+dd if=/dev/null	of=disk/disk.img bs=512 seek=$(($NCYL * 4 * 17))
+#dd if=/dev/null of=disk.img bs=1M seek=504
+
+exec qemu-system-i386		\
+	-fda disk/newdos.img	\
+	-fdb disk/scratch.img	\
+	-hda disk/disk.img	\
+	-rtc base=localtime	\
+	-boot a			\
+	-serial telnet:0.0.0.0:4000,server,nowait \
+	-curses

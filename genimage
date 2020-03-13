@@ -1,0 +1,39 @@
+#!/bin/sh
+
+set -e
+
+asm() {
+	nasm -o $2 $1
+}
+
+asm bios/dosbios.asm bios/dosbios.sys
+
+asm boot/mboot.asm	boot/mboot.bin
+asm boot/boot.asm	boot/boot.com
+
+asm util/format.asm	util/format.com
+asm util/fdisk.asm	util/fdisk.com
+asm util/reboot.asm	util/reboot.com
+asm util/mem.asm	util/mem.com
+
+#dd if=/dev/null of=dosbios.sys bs=512 seek=9
+
+export MTOOLSRC=mtools.cfg
+
+perl -e 'print chr(0xf6) x 2880 x 512' > disk/newdos.tmp
+
+mformat -m 0xf8 -v DOS	a:
+mcopy	bios/dosbios.sys a:io.sys
+mcopy	msdos/msdos.sys	a:
+mcopy	msdos/*.com	a:
+mcopy	msdos/*.exe	a:
+
+mcopy	util/*.com	a:
+mcopy -a legal/*	a:
+mcopy -a etc/*		a:
+
+mattrib +s +h +r a:io.sys
+mattrib +s +h +r a:msdos.sys
+
+dd status=none if=boot/boot.com of=disk/newdos.tmp conv=notrunc
+mv disk/newdos.tmp disk/newdos.img
