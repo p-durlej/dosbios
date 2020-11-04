@@ -15,6 +15,7 @@ asm util/format.asm	util/format.com
 asm util/fdisk.asm	util/fdisk.com
 asm util/reboot.asm	util/reboot.com
 asm util/mem.asm	util/mem.com
+asm util/attrib.asm	util/attrib.com
 
 #dd if=/dev/null of=dosbios.sys bs=512 seek=9
 
@@ -27,13 +28,14 @@ mcopy	bios/dosbios.sys a:io.sys
 mcopy	msdos/msdos.sys	a:
 mcopy	msdos/*.com	a:
 mcopy	msdos/*.exe	a:
+mcopy	msdos1/*.com	a:
 
 mcopy	util/*.com	a:
 mcopy -a legal/*	a:
 mcopy -a etc/*		a:
 
-mattrib +s +h +r a:io.sys
-mattrib +s +h +r a:msdos.sys
+mattrib -a +s +h +r a:io.sys
+mattrib -a +s +h +r a:msdos.sys
 
 dd status=none if=boot/boot.com of=disk/newdos.tmp conv=notrunc
 mv disk/newdos.tmp disk/newdos.img

@@ -194,13 +194,14 @@ read:	push	es
 	inc	byte [ccyl]
 .fini:	ret
 
-fail:	mov	dx, 0x0007
+fail:	mov	bx, 0x0007
 	mov	ah, 0x0e
 	mov	si, .msg
 .loop:	lodsb
+	test	al, al
 	jz	.halt
 	int	0x10
-	loop	.loop
+	jmp	.loop
 .halt:	xor	ah, ah
 	int	0x16
 	int	0x19

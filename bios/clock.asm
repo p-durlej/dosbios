@@ -105,7 +105,6 @@ clk_read:
 	add	si, ax
 	mov	ax, [cs:si]
 	add	bx, ax
-	xchg	bx, bx
 	
 	xor	ah, ah
 	mov	al, cl

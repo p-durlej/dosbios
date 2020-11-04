@@ -10,6 +10,7 @@ MD C:\DOS
 REM COPY *.COM C:\DOS > NUL
 REM COPY *.EXE C:\DOS > NUL
 
+COPY attrib.com		C:\DOS > NUL
 COPY chkdsk.com		C:\DOS > NUL
 COPY command.com	C:\DOS > NUL
 COPY cref.exe		C:\DOS > NUL
@@ -24,6 +25,7 @@ COPY fdisk.com		C:\DOS > NUL
 COPY link.exe		C:\DOS > NUL
 COPY masm.exe		C:\DOS > NUL
 COPY mem.com		C:\DOS > NUL
+COPY mode.com		C:\DOS > NUL
 COPY more.com		C:\DOS > NUL
 COPY print.com		C:\DOS > NUL
 COPY reboot.com		C:\DOS > NUL

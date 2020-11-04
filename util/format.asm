@@ -24,9 +24,6 @@
 ; POSSIBILITY OF SUCH DAMAGE.
 ;
 
-RELTIME	equ	0x0940
-RELDATE	equ	0x4af6
-
 	org	0x100
 
 	%include "bios/config.asm"
@@ -43,6 +40,13 @@ ndire	equ	bpb	+ DPB_NDIRENT
 rsvds	equ	bpb	+ DPB_RSVD_SECTS
 totsec	equ	bpb	+ DPB_TOT_SECTORS
 
+	push	ax
+	mov	ah, 0xff
+	int	DOSINT
+	cmp	al, 0x20
+	jne	baddos
+	pop	ax
+	
 	test	al, al
 	jnz	baddrv
 	
@@ -115,6 +119,7 @@ totsec	equ	bpb	+ DPB_TOT_SECTORS
 	mov	[drive], al
 	add	[minsnew + 33], al
 	add	[mconfm  + 16], al
+	add	[label	     ], al
 	inc	al
 	
 	cmp	al, 2
@@ -142,6 +147,7 @@ totsec	equ	bpb	+ DPB_TOT_SECTORS
 	call	fmt
 	jc	.asknxt
 	call	savesys
+	call	setlabel
 .asknxt:test	byte [biosdrv], 0x80
 	jnz	.fini
 	test	byte [aflag], 0xff
@@ -300,21 +306,13 @@ fmt:	mov	ah, SDSKRST
 	cmp	byte [curcyl], bl ; XXX
 	jb	.next
 	
-	; write the boot sector
-	
 .quick:	call	clrlin
 	mov	dx, mwork2
 	mov	ah, SSTROUT
 	int	DOSINT
 	
-	call	writeboot
-	jc	.fail
-	
 	; XXX DOSBIOS uses a hardcoded BPB and ignores on-disk BPB
 	; update BPB and partition offset
-	
-	mov	ah, SDSKRST
-	int	DOSINT
 	
 	mov	ah, 0x32
 	mov	dl, [drive]
@@ -338,6 +336,8 @@ fmt:	mov	ah, SDSKRST
 	mov	word [ndire], si
 	mov	byte [fatsz], dh
 	mov	byte [clusz], cl
+	
+	; write the boot sector to disk
 	
 	call	writeboot
 	jc	.fail
@@ -454,90 +454,38 @@ dkwrite:push	ax
 
 writeboot:
 	mov	bx, bootsec
-	mov	dl, [biosdrv]
-	test	dl, 0x80
-	jnz	.hard
-	mov	ax, 0x0301
-	mov	cx, 0x0001
-	xor	dh, dh
-	int	0x13
-	ret
-.hard:	mov	al, [drive]
+	mov	al, [drive]
 	mov	cx, 1
 	xor	dx, dx
 	jmp	dkwrite
 
 loadsys:
-	cmp	byte [sflag], 0
-	je	.fini
-	
-	mov	dx, biosnam
-	mov	di, biosbuf
-	call	loadfile
-	mov	[biossiz], cx
-	
-	mov	dx, dosnam
-	mov	di, dosbuf
-	call	loadfile
-	mov	[dossiz], cx
-	
-	mov	dx, comnam
-	mov	di, combuf
-	call	loadfile
-	mov	[comsiz], cx
-	
 	mov	al, [drive]
 	add	[biosnam], al
 	add	[dosnam], al
 	add	[comnam], al
-	
-.fini:	ret
-
-loadfile:
-	mov	ax, 0x3d00
-	xor	cl, cl
-	int	DOSINT
-	jc	loaderr
-	mov	bx, ax
-	
-	mov	ah, 0x3f
-	mov	cx, 0xffff ; XXX
-	mov	dx, di
-	int	DOSINT
-	jc	loaderr
-	mov	cx, ax
-	
-	mov	ah, 0x3e
-	int	DOSINT
-	jc	loaderr
-	
 	ret
-
-loaderr:mov	dx, mload
-	mov	ah, SSTROUT
-	int	DOSINT
-	int	XITINT
 
 savesys:
 	cmp	byte [sflag], 0
 	je	.fini
 	
 	mov	dx, biosnam
-	mov	di, biosbuf
-	mov	bl, 0x47
-	mov	cx, [biossiz]
+	mov	di, bios
+	mov	bl, 0x07
+	mov	cx, dos
 	call	savefile
 	
 	mov	dx, dosnam
-	mov	di, dosbuf
-	mov	bl, 0x47
-	mov	cx, [dossiz]
+	mov	di, dos
+	mov	bl, 0x07
+	mov	cx, command - dos
 	call	savefile
 	
 	mov	dx, comnam
-	mov	di, combuf
-	mov	bl, 0x41
-	mov	cx, [comsiz]
+	mov	di, command
+	mov	bl, 0x20
+	mov	cx, endcom - command
 	call	savefile
 	
 .fini:	ret
@@ -576,6 +524,68 @@ waitkey:mov	dx, manykey
 	call	crlf
 .fini:	ret
 
+setlabel:
+	test	[aflag], byte 1
+	jnz	.fini
+	
+	; prompt the user and input the label
+	
+.again:	mov	dx, mlabel
+	mov	ah, SSTROUT
+	int	DOSINT
+	mov	ah, SSTRIN
+	mov	dx, .buf
+	int	DOSINT
+	call	crlf
+	
+	mov	cl, [.len]
+	xor	ch, ch
+	test	cx, cx
+	jz	.fini
+	mov	di, label + 3
+	mov	si, .buf + 2
+	cmp	cx, 8
+	jg	.long
+	rep movsb
+.nterm:	xor	al, al
+	stosb
+	
+	; XXX probably should use the FCB API
+	; create the label
+	
+	mov	dx, label
+	mov	cx, 8
+	mov	ah, 0x3c
+	int	DOSINT
+	jnc	.fini
+	cmp	ax, 2
+	jne	.badlab
+.fini:	ret
+.long:	mov	bx, cx
+	mov	cx, 8
+	rep movsb
+	mov	al, '.'
+	stosb
+	mov	cx, bx
+	sub	cx, 8
+	rep movsb
+	jmp	.nterm
+.badlab:mov	dx, mbadlab
+	mov	ah, SSTROUT
+	int	DOSINT
+	jmp	.again
+	.buf:	db	12
+.len:	db	0
+	resb	12
+
+label:	db	"A:\"
+	resb	13
+
+baddos:	mov	dx, mbaddos
+	mov	ah, SSTROUT
+	int	DOSINT
+	int	XITINT
+
 baddrv:	mov	dx, mbaddrv
 	mov	ah, SSTROUT
 	int	DOSINT
@@ -593,7 +603,6 @@ crlf:	push	ax
 	pop	ax
 	ret
 
-minssys	db	CR, LF,	"Insert SYSTEM disk into drive A",		CR, LF, "$"
 minsnew	db	CR, LF,	"Insert NEW diskette into drive A",		CR, LF, "$"
 mconfm	db	CR, LF,	"Data in drive A will be lost!",		CR, LF, "$"
 mwprot	db		"Disk write-protected",				CR, LF, "$"
@@ -604,15 +613,20 @@ mdone	db	CR,	"Format complete",				CR, LF, "$"
 mfail	db	CR,	"Format failed",				CR, LF, "$"
 msys	db		"Transferring DOS ... $"
 msdone	db	CR,	"DOS transferred     ",				CR, LF, "$"
-msfail	db	CR,	"DOS transfer failed ",				CR, LF, "$"
 manykey	db		"Strike any key when ready ... $"
 mbaddrv	db		"Invalid drive specification",			CR, LF, "$"
 mbadsw	db		"Invalid switch: /$",				CR, LF, "$"
-mload	db	CR,	"System file load error",			CR, LF, "$"
+mbadlab	db		"Invalid label",				CR, LF, "$"
+mbaddos	db		"Incorrect DOS version",			CR, LF, "$"
+mlabel	db		"Volume label: $"
 msave	db	CR,	"Cannot transfer operating system"
 mcrlf	db	CR, LF, "$"
 
 bootsec	incbin	"boot/boot.com"
+bios	incbin	"bios/dosbios.sys"
+dos	incbin	"msdos/msdos.sys"
+command	incbin	"msdos/command.com"
+endcom:
 
 ncyl	dw	80
 
@@ -632,10 +646,6 @@ curhead	resb	1
 cursec	resw	1
 sresid	resw	1
 
-fileseg	resw	1
-fendseg	resw	1
-saveseg	resw	1
-
 sflag	resb	1
 qflag	resb	1
 aflag	resb	1
@@ -645,13 +655,5 @@ flag8	resb	1
 flag9	resb	1
 
 buf:	resb	512
-
-biosbuf:resb	8192
-dosbuf:	resb	16690
-combuf:	resb	15480
-
-biossiz:resw	1
-dossiz:	resw	1
-comsiz:	resw	1
 
 ebss:
