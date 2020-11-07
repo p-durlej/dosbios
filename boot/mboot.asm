@@ -26,39 +26,42 @@
 
 	%include "bios/config.asm"
 
-	jmp	0x07c0:start
+ORG 0x600
 
-start:	cli ; Don't rely on the interrupt shadow (some CPUs are buggy)
+boot:	cli ; Don't rely on the interrupt shadow (some CPUs are buggy)
 	xor	ax, ax
 	mov	ss, ax
-	mov	sp, STKTOP
+	mov	sp, 0x7C00	; Move top of stack below boot area in case of 1kb sectors
 	sti
-	push	cs
-	pop	ds
 	cld
-	
-	mov	ax, 0x50
+	mov	ds, ax		; Move MBR to 0x600 region reserved for it.
 	mov	es, ax
-	xor	si, si
-	xor	di, di
+	mov	si, sp		; Move SI = load address (currently in SP already)
+	mov	di, 0x600
 	mov	cx, 0x100
 	rep movsw
-	mov	ds, ax
-	jmp	0x50:.moved
+	jmp	0x0000:start
 
-.moved:	mov	si, 0x1be
+start:	mov	si, 0x7be
 .loop:	test	byte [si], 0x80
 	jnz	.found
 	add	si, 0x10
 	cmp	si, 0x1fe
 	jne	.loop
+	int	0x18		; Try next boot choice, if any
 	mov	si, mnoact
 	call	puts
-	jmp	$
+.halt:	hlt
+	jmp	short .halt
 
-.found:	mov	bx, 0x07c0
-	mov	es, bx
-	xor	bx, bx
+.found:	test	dl, 0x80	; If we were booted from HD 2-4, dl will tell us
+	jz	.nodar
+	cmp	dl, 0x90	; Range cutoff in case of buggy BIOS
+	ja	.nodar
+	mov	[si], dl	; Boot protocol: ds:si points to the correct
+				; MBR slot from which to load the OS
+				; DOS doesnt care but other stuff does.
+.nodar:	mov	bx, 0x7c00
 	mov	ax, 0x0201
 	mov	dx, [si    ]
 	mov	cx, [si + 2]
@@ -79,6 +82,7 @@ puts:	mov	dx, 0x0007
 fail:	mov	si, mrfail
 	call	puts
 	int	0x18
+	jmp	start.halt		; In case 0x180 returns
 
 mrfail:	db	"Error loading operating system", 13, 10, 0
 mnoact:	db	"Missing operating system", 13, 10, 0
