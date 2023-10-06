@@ -10,6 +10,8 @@ MD C:\DOS
 REM COPY *.COM C:\DOS > NUL
 REM COPY *.EXE C:\DOS > NUL
 
+ECHO Copying files
+
 COPY attrib.com		C:\DOS > NUL
 COPY chkdsk.com		C:\DOS > NUL
 COPY command.com	C:\DOS > NUL

@@ -75,14 +75,6 @@ totsec	equ	bpb	+ DPB_TOT_SECTORS
 	je	.eflag
 	cmp	bl, 'E'
 	je	.eflag
-	cmp	bl, '1'
-	je	.1flag
-	cmp	bl, '4'
-	je	.4flag
-	cmp	bl, '8'
-	je	.8flag
-	cmp	bl, '9'
-	je	.9flag
 	jmp	.badsw
 .sflag:	mov	byte [sflag], 1
 	jmp	.getsw
@@ -91,14 +83,6 @@ totsec	equ	bpb	+ DPB_TOT_SECTORS
 .aflag:	mov	byte [aflag], 1
 	jmp	.getsw
 .eflag:	mov	byte [ndire], 16
-	jmp	.getsw
-.1flag:	mov	byte [flag1], 1
-	jmp	.getsw
-.4flag:	mov	byte [flag4], 1
-	jmp	.getsw
-.8flag:	mov	byte [flag8], 1
-	jmp	.getsw
-.9flag:	mov	byte [flag9], 1
 	jmp	.getsw
 .badsw:	mov	dx, mbadsw
 	mov	ah, SSTROUT
@@ -193,23 +177,7 @@ fmt:	mov	ah, SDSKRST
 	mov	[nsect], cl
 	mov	[nhead], dh
 	
-	cmp	byte [flag1], 0
-	je	.n1flag
-	mov	byte [nhead], 1
-	
-.n1flag:cmp	byte [flag4], 0
-	je	.n4flag
-	mov	word [ncyl], 40
-
-.n4flag:cmp	byte [flag8], 0
-	je	.n8flag
-	mov	byte [nsect], 8
-
-.n8flag:cmp	byte [flag9], 0
-	je	.n9flag
-	mov	byte [nsect], 9
-
-.n9flag:mov	ax, word [nsect]
+	mov	ax, word [nsect]
 	mov	cx, word [nhead]
 	mul	cl
 	mov	cx, word [ncyl]
@@ -473,7 +441,7 @@ savesys:
 	mov	dx, biosnam
 	mov	di, bios
 	mov	bl, 0x07
-	mov	cx, dos
+	mov	cx, dos - bios
 	call	savefile
 	
 	mov	dx, dosnam
@@ -649,10 +617,6 @@ sresid	resw	1
 sflag	resb	1
 qflag	resb	1
 aflag	resb	1
-flag1	resb	1
-flag4	resb	1
-flag8	resb	1
-flag9	resb	1
 
 buf:	resb	512
 

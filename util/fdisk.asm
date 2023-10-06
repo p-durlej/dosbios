@@ -367,6 +367,7 @@ beep:
 	mov	dl, 7
 	mov	ah, SCHROUT
 	int	DOSINT
+	ret
 
 getpartn:
 	call	getkey
@@ -405,6 +406,7 @@ wantpart:
 	mov	cx, 4
 .loop:	test	[si + 4], byte 0xff
 	jnz	.found
+	add	si, 16
 	loop	.loop
 	mov	dx, mnopart
 	mov	ah, SSTROUT
@@ -476,7 +478,7 @@ show:
 	jmp	main
 
 mbanner:db	27, "[2J"
-	db	"Fixed Disk Setup Program Version 1.00", 13, 10
+	db	"Fixed Disk Setup Program Version 1.01", 13, 10
 	db	"(C) Piotr Durlej", 13, 10, 10, "$"
 moptions:
 	db	"Options:", 13, 10, 10

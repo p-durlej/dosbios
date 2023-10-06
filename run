@@ -16,4 +16,4 @@ exec qemu-system-i386		\
 	-rtc base=localtime	\
 	-boot a			\
 	-serial telnet:0.0.0.0:4000,server,nowait \
-	-curses
+	-display curses

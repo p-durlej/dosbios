@@ -54,8 +54,7 @@ getcwd:	pushf
 	push	si
 	xor	al, al
 	cld
-.loop:	mov	ah, al
-	lodsb
+.loop:	lodsb
 	cmp	al, 'a'
 	jb	.skip
 	cmp	al, 'z'

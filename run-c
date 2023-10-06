@@ -8,4 +8,4 @@ exec qemu-system-i386		\
 	-hda disk/disk.img	\
 	-rtc base=localtime	\
 	-boot c			\
-	-curses
+	-display curses

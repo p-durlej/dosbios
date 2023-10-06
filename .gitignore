@@ -1,0 +1,12 @@
+/bios/dosbios.sys
+/boot/boot.com
+/boot/mboot.bin
+/disk/disk.img
+/disk/newdos.img
+/disk/newdos.tmp
+/disk/scratch.img
+/util/attrib.com
+/util/fdisk.com
+/util/format.com
+/util/mem.com
+/util/reboot.com
